@@ -193,6 +193,58 @@ def _read_inventory(nr, **kwargs):
     hosts = FFun(nr, kwargs=kwargs)
     return hosts.inventory.dict()
 
+def _update_defaults(
+    nr,
+    name,
+    connection_options=None,
+    data=None,
+    **kwargs
+):
+    """
+    Function to update host's inventory.
+    :param nr: (obj) Nornir object
+    :param name: (str) host name
+    :param connection_options: (dict) connection options dictionary
+    :param data: (dict) dictionary with host's data
+    :param kwargs: (dict) host base attributes such as hostname, port,
+        username, password, platform
+    :return: True on success
+    ``data`` and ``connection_options`` replace existing values for top keys
+    similar to dictionary ``update`` method, no recursive merge performed.
+   
+    """
+    connection_options = connection_options or {}
+    data = data or {}
+
+
+    # get host object to update
+    try:
+        defaults_obj = nr.inventory.hosts[name]
+    except KeyError:
+        return False
+
+    # update base attributes
+    defaults_obj.username = kwargs.get("username", defaults_obj.username)
+    defaults_obj.password = kwargs.get("password", defaults_obj.password)
+
+    # update data
+    defaults_obj.data.update(data)
+
+    # update connection options
+    for cn, c in connection_options.items():
+        defaults_obj.connection_options[cn] = ConnectionOptions(
+            hostname=c.get("hostname"),
+            port=c.get("port"),
+            username=c.get("username"),
+            password=c.get("password"),
+            platform=c.get("platform"),
+            extras=c.get("extras"),
+        )
+
+
+    return True
+
+
 
 def _update_host(
     nr,
@@ -351,6 +403,8 @@ fun_dispatcher = {
     "load": _load,
     "list_hosts": _list_hosts,
     "list_hosts_platforms": _list_hosts_platforms,
+    "update_defaults": _update_defaults,
+
 }
 
 
