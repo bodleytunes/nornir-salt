@@ -126,11 +126,43 @@ from nornir.core.inventory import Host, ConnectionOptions
 
 log = logging.getLogger(__name__)
 
-def _create_bulk_hosts(self, hosts_dict):
+def _create_bulk_hosts(nr, hosts_dict):
+    """
+    Function to add multiple new hosts in inventory or replace existing hosts.
+
+    :param hosts_dict: (dict) Dictionary where each key is a host name and each value is a dictionary of host data.
+        The host data dictionary should include 'groups', 'connection_options', and other host base attributes such as 'hostname', 'port',
+        'username', 'password', 'platform', 'data'.
+
+    This function iterates over the hosts_dict dictionary and calls the _create_host function for each host.
+    If a host data dictionary includes a 'groups' list with a group that does not exist, no error is raised, the group is simply skipped.
+    The function does not return a value.
+
+    Example usage:
+        _create_bulk_hosts({
+            'host1': {'groups': ['group1'], 'hostname': '1.1.1.1', 'platform': 'ios'},
+            'host2': {'groups': ['group2'], 'hostname': '2.2.2.2', 'platform': 'junos'}
+        })
+    """
     for host_name, host_data in hosts_dict.items():
-        self._create_host(host_name, host_data)
-        
+        _create_host(nr, host_name, **host_data)
+
 def _create_host(nr, name, groups=None, connection_options=None, **kwargs):
+    """
+    Function to add new host in inventory or replace existing host.
+
+    :param nr: (obj) Nornir object
+    :param name: (str) host name
+    :param groups: (list) list of host's parent group names
+    :param connection_options: (dict) connection options dictionary
+    :param kwargs: (dict) host base attributes such as hostname, port,
+        username, password, platform, data
+    :return: host (obj) Host object
+
+    If a group given in the ``groups`` list does not exist, no error is raised, it is simply skipped.
+    The function now returns the created Host object instead of True.
+    Connection options are now processed before creating the Host object to optimize performance.
+    """
     groups = groups or []
     connection_options = connection_options or {}
 
@@ -164,7 +196,10 @@ def _create_host(nr, name, groups=None, connection_options=None, **kwargs):
         **kwargs
     )
 
-    return host
+    # add up update host to inventory
+    nr.inventory.hosts[name] = host
+
+    return {name: True}
 
 def _read_host(nr, **kwargs):
     """
