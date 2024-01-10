@@ -157,47 +157,36 @@ def _create_host(nr, name, groups=None, connection_options=None, **kwargs):
     :param connection_options: (dict) connection options dictionary
     :param kwargs: (dict) host base attributes such as hostname, port,
         username, password, platform, data
-    :return: host (obj) Host object
+    :return: True on success
 
-    If a group given in the ``groups`` list does not exist, no error is raised, it is simply skipped.
-    The function now returns the created Host object instead of True.
-    Connection options are now processed before creating the Host object to optimize performance.
+    If group given in ``groups`` list does not exist, no error raised, it simply skipped.
     """
     groups = groups or []
     connection_options = connection_options or {}
 
-    # create ConnectionOptions objects
-    connection_options_objs = {
-        cn: ConnectionOptions(
-            hostname=c.get("hostname"),
-            port=c.get("port"),
-            username=c.get("username"),
-            password=c.get("password"),
-            platform=c.get("platform"),
-            extras=c.get("extras"),
-        )
-        for cn, c in connection_options.items()
-    }
-
-    # create set of group names
-    group_names = set(nr.inventory.groups.keys())
-
-    # create Host object
-    host = Host(
+    # add new host or replace existing host completely
+    nr.inventory.hosts[name] = Host(
         name=name,
         hostname=kwargs.pop("hostname", name),
         defaults=nr.inventory.defaults,
-        connection_options=connection_options_objs,
+        connection_options={
+            cn: ConnectionOptions(
+                hostname=c.get("hostname"),
+                port=c.get("port"),
+                username=c.get("username"),
+                password=c.get("password"),
+                platform=c.get("platform"),
+                extras=c.get("extras"),
+            )
+            for cn, c in connection_options.items()
+        },
         groups=[
             nr.inventory.groups[group_name]
             for group_name in groups
-            if group_name in group_names
+            if group_name in nr.inventory.groups
         ],
         **kwargs
     )
-
-    # add up update host to inventory
-    nr.inventory.hosts[name] = host
 
     return {name: True}
 
